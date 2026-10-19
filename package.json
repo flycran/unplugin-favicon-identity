@@ -1,6 +1,6 @@
 {
   "name": "unplugin-favicon-identity",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "Give every project a stable, readable dev-server favicon so you can tell browser tabs apart at a glance",
   "keywords": [
