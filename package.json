@@ -1,0 +1,100 @@
+{
+  "name": "unplugin-favicon-identity",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Give every project a stable, readable dev-server favicon so you can tell browser tabs apart at a glance",
+  "keywords": [
+    "unplugin",
+    "vite",
+    "webpack",
+    "favicon",
+    "dev-server",
+    "developer-experience"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flycran/unplugin-favicon-identity.git"
+  },
+  "homepage": "https://github.com/flycran/unplugin-favicon-identity#readme",
+  "bugs": {
+    "url": "https://github.com/flycran/unplugin-favicon-identity/issues"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./vite": {
+      "import": {
+        "types": "./dist/vite.d.ts",
+        "default": "./dist/vite.js"
+      },
+      "require": {
+        "types": "./dist/vite.d.cts",
+        "default": "./dist/vite.cjs"
+      }
+    },
+    "./webpack": {
+      "import": {
+        "types": "./dist/webpack.d.ts",
+        "default": "./dist/webpack.js"
+      },
+      "require": {
+        "types": "./dist/webpack.d.cts",
+        "default": "./dist/webpack.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "biome check --write",
+    "playground": "vite playground"
+  },
+  "peerDependencies": {
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
+    "webpack": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "unplugin": "^3.4.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@types/node": "^24.10.1",
+    "html-webpack-plugin": "^5",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4",
+    "vitest": "^3.2.4",
+    "webpack": "^5.101.3",
+    "webpack-dev-server": "^5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
