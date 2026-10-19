@@ -113,12 +113,8 @@ export const unplugin = createUnplugin<FaviconIdentityOptions | undefined>((opti
   /** 图标只在名字变化时重算：哈希成本可以忽略，也没有必要落盘缓存 */
   let icon: { name: string; svg: string; version: string } | null = null
 
-  /** 同一个失败只告警一次，避免 watch 模式下每次重编译刷屏 */
-  let lastWarning = ''
+  /** 失败时保留原图标 */
   const warn = (error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error)
-    if (message === lastWarning) return
-    lastWarning = message
     console.warn('[favicon-identity] 生成图标失败，保留原图标:', error)
   }
 
@@ -263,7 +259,11 @@ export const unplugin = createUnplugin<FaviconIdentityOptions | undefined>((opti
               res.setHeader('Cache-Control', 'no-store')
               res.end(svg)
             })
-            .catch(next)
+            .catch((error) => {
+              warn(error)
+              res.statusCode = 500
+              res.end()
+            })
         })
       },
       transformIndexHtml: {
@@ -280,7 +280,7 @@ export const unplugin = createUnplugin<FaviconIdentityOptions | undefined>((opti
 
             return injectIconLink(html, href)
           } catch (error) {
-            console.warn('[favicon-identity] 生成图标失败，保留原图标:', error)
+            warn(error)
             return html
           }
         },
