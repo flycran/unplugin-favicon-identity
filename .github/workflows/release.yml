@@ -6,8 +6,8 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
-  id-token: write # npm provenance
+  contents: read
+  id-token: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -27,13 +27,14 @@ jobs:
         with:
           bun-version: 1.4.2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun ci
 
       - name: Check tag matches package.json version
         run: |
@@ -56,16 +57,5 @@ jobs:
       - name: Build
         run: bun run build
 
-      # Authentication uses npm Trusted Publishing (OIDC) — no long-lived token.
-      # Requires a trusted publisher configured on npmjs.com for this package:
-      #   repository: flycran/unplugin-favicon-identity
-      #   workflow:   release.yml
       - name: Publish to npm
-        run: npm publish --provenance --access public --ignore-scripts
-
-      - name: Create GitHub release
-        run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
-            gh release create "$GITHUB_REF_NAME" --generate-notes --title "$GITHUB_REF_NAME"
-        env:
-          GH_TOKEN: ${{ github.token }}
+        run: npm publish
