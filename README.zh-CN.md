@@ -5,7 +5,7 @@
 [![npm 版本](https://img.shields.io/npm/v/unplugin-favicon-identity?label=npm)](https://www.npmjs.com/package/unplugin-favicon-identity)
 [![npm 下载量](https://img.shields.io/npm/dm/unplugin-favicon-identity)](https://www.npmjs.com/package/unplugin-favicon-identity)
 [![单元测试](https://img.shields.io/github/actions/workflow/status/flycran/unplugin-favicon-identity/ci.yml?label=tests)](https://github.com/flycran/unplugin-favicon-identity/actions/workflows/ci.yml)
-[![许可证](https://img.shields.io/npm/l/unplugin-favicon-identity)](https://github.com/flycran/unplugin-favicon-identity/blob/main/LICENSE)
+[![许可证](https://img.shields.io/github/license/flycran/unplugin-favicon-identity)](https://github.com/flycran/unplugin-favicon-identity/blob/main/LICENSE)
 
 给每个项目一枚属于自己的开发环境 favicon —— 一块圆角色块，写着项目名的首字 —— 这样不看标题也能
 分清浏览器标签页。

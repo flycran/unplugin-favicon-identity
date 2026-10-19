@@ -5,7 +5,7 @@ English | [Chinese (Simplified)](./README.zh-CN.md)
 [![npm version](https://img.shields.io/npm/v/unplugin-favicon-identity?label=npm)](https://www.npmjs.com/package/unplugin-favicon-identity)
 [![npm downloads](https://img.shields.io/npm/dm/unplugin-favicon-identity)](https://www.npmjs.com/package/unplugin-favicon-identity)
 [![tests](https://img.shields.io/github/actions/workflow/status/flycran/unplugin-favicon-identity/ci.yml?label=tests)](https://github.com/flycran/unplugin-favicon-identity/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/unplugin-favicon-identity)](https://github.com/flycran/unplugin-favicon-identity/blob/main/LICENSE)
+[![license](https://img.shields.io/github/license/flycran/unplugin-favicon-identity)](https://github.com/flycran/unplugin-favicon-identity/blob/main/LICENSE)
 
 Give every project its own dev-server favicon — a rounded tile with the first character of the
 project name — so you can tell browser tabs apart without reading titles.
