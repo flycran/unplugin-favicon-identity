@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeHtmlEntities, extractTitle, firstChar } from '../src/core'
+import { decodeHtmlEntities, extractTitle, firstChar } from '../src/core/name'
 
 describe('decodeHtmlEntities', () => {
   it('还原命名实体', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildFaviconSvg, escapeXml } from '../src/core'
+import { buildFaviconSvg, escapeXml } from '../src/core/svg'
 
 describe('escapeXml', () => {
   it('转义 XML 特殊字符', () => {

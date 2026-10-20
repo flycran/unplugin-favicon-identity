@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { readIdentityHash } from './hash'
 
 /**
  * 文字色预设：文字颜色 + 背景允许的亮度范围（OKLab 的 L，也就是感知亮度）
@@ -25,20 +25,6 @@ export interface OklchColor {
   chroma: number
   /** 色相角度，0 ~ 360 */
   hue: number
-}
-
-/**
- * 把字符串映射到 [0, 1) 的小数
- * salt 用于在同一名字上取到多个互不相关的小数（色相与亮度各需要一个小数）
- */
-export function hashRatio(input: string, salt = ''): number {
-  const digest = createHash('sha256').update(`${input}\u0000${salt}`).digest()
-  return digest.readUInt32BE(0) / 2 ** 32
-}
-
-/** 十六进制摘要，用于给生成的资源标记版本 */
-export function hashString(input: string, length = 8): string {
-  return createHash('sha256').update(input).digest('hex').slice(0, length)
 }
 
 /** OKLab → linear sRGB */
@@ -82,66 +68,25 @@ export function isInSrgbGamut({ lightness, chroma, hue }: OklchColor): boolean {
 }
 
 /**
- * 由名字生成身份色：色相与亮度各取一个哈希小数，彩度取该色相在 sRGB 内的上限
+ * 由已算好的 SHA-256 摘要生成颜色与版本号
  *
- * 为什么彩度要卡在色域内：超出 sRGB 时浏览器会把 linear 分量直接裁到 [0, 1]，亮度会跟着漂
- * （实测请求 L=0.53 能渲染成 0.68），那样 L 就管不住对比度了。取色域内的上限既能拿到该色相
- * 最鲜艳的颜色，又不会漂。
+ * 彩度卡在 sRGB 色域内：超出时浏览器会把 linear 分量裁到 [0, 1]，亮度会跟着漂
+ * （实测请求 L=0.53 能渲染成 0.68），那样 L 就管不住对比度了。取域内上限既能拿到
+ * 该色相最鲜艳的颜色，又不会漂。
  */
-export function createIdentityColor(name: string, textColor: TextColor = 'light'): OklchColor {
+export function createIdentityFromHash(
+  hash: Uint8Array,
+  textColor: TextColor = 'light'
+): { color: OklchColor; version: string } {
   const [minLightness, maxLightness] = TEXT_STYLES[textColor].lightness
-  const hue = Math.floor(hashRatio(name) * 360)
-  const lightness = minLightness + (maxLightness - minLightness) * hashRatio(name, 'lightness')
+  const { hueRatio, lightnessRatio, version } = readIdentityHash(hash)
+  const hue = Math.floor(hueRatio * 360)
+  const lightness = minLightness + (maxLightness - minLightness) * lightnessRatio
   const chroma = Math.floor(maxChroma(lightness, hue) * 0.99 * 1000) / 1000
-  return { lightness, chroma, hue }
+  return { color: { lightness, chroma, hue }, version }
 }
 
 /** 输出 CSS 颜色字面量，例如 oklch(0.484 0.163 256) */
 export function formatOklch({ lightness, chroma, hue }: OklchColor): string {
   return `oklch(${lightness.toFixed(3)} ${chroma.toFixed(3)} ${hue})`
-}
-
-function encodeSrgb(value: number): number {
-  const v = Math.min(1, Math.max(0, value))
-  return v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055
-}
-
-/** OKLCH → sRGB（0 ~ 255）；超色域的分量按浏览器的方式裁到 [0, 1] */
-export function oklchToSrgb(color: OklchColor): Rgb {
-  const angle = (color.hue * Math.PI) / 180
-  const linear = oklabToLinearRgb(
-    color.lightness,
-    color.chroma * Math.cos(angle),
-    color.chroma * Math.sin(angle)
-  )
-  return linear.map((value) => Math.round(encodeSrgb(value) * 255)) as Rgb
-}
-
-function toLinear(channel: number): number {
-  const v = channel / 255
-  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
-}
-
-/** WCAG 相对亮度 */
-export function relativeLuminance([r, g, b]: Rgb): number {
-  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
-}
-
-/** WCAG 对比度，取值 1 ~ 21 */
-export function contrastRatio(a: number, b: number): number {
-  const lighter = Math.max(a, b)
-  const darker = Math.min(a, b)
-  return (lighter + 0.05) / (darker + 0.05)
-}
-
-function hexToRgb(hex: string): Rgb {
-  const value = Number.parseInt(hex.slice(1), 16)
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255]
-}
-
-/** 该背景色与预设文字色之间的对比度 */
-export function contrastWithText(color: OklchColor, textColor: TextColor): number {
-  const background = relativeLuminance(oklchToSrgb(color))
-  const foreground = relativeLuminance(hexToRgb(TEXT_STYLES[textColor].color))
-  return contrastRatio(background, foreground)
 }

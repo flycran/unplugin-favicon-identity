@@ -1,35 +1,21 @@
+import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import {
-  contrastWithText,
-  createIdentityColor,
+  createIdentityFromHash,
   formatOklch,
-  hashRatio,
   isInSrgbGamut,
   maxChroma,
   type OklchColor,
-  oklchToSrgb,
   TEXT_STYLES,
-} from '../src/core'
+  type TextColor,
+} from '../src/core/color'
+import { contrastWithText, oklchToSrgb } from './helpers/color'
 
 const NAMES = Array.from({ length: 200 }, (_, i) => `project-${i}`)
 
-describe('hashRatio', () => {
-  it('同一输入得到同一结果', () => {
-    expect(hashRatio('复发性流产专科病历')).toBe(hashRatio('复发性流产专科病历'))
-  })
-
-  it('salt 让同一名字取到互不相关的小数', () => {
-    expect(hashRatio('demo')).not.toBe(hashRatio('demo', 'lightness'))
-  })
-
-  it('结果落在 [0, 1)', () => {
-    for (const name of NAMES) {
-      const value = hashRatio(name)
-      expect(value).toBeGreaterThanOrEqual(0)
-      expect(value).toBeLessThan(1)
-    }
-  })
-})
+/** 测试内的 Node 端便捷函数，与包主入口的 createIdentityColor 等价 */
+const createIdentityColor = (name: string, textColor: TextColor = 'light') =>
+  createIdentityFromHash(createHash('sha256').update(name).digest(), textColor).color
 
 describe('createIdentityColor', () => {
   it('同名稳定：同一个项目永远是同一个颜色', () => {

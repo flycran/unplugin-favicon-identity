@@ -7,6 +7,8 @@ English | [Chinese (Simplified)](./README.zh-CN.md)
 [![tests](https://img.shields.io/github/actions/workflow/status/flycran/unplugin-favicon-identity/ci.yml?label=tests)](https://github.com/flycran/unplugin-favicon-identity/actions/workflows/ci.yml)
 [![license](https://img.shields.io/github/license/flycran/unplugin-favicon-identity)](https://github.com/flycran/unplugin-favicon-identity/blob/main/LICENSE)
 
+**[Open the live playground →](https://flycran.github.io/unplugin-favicon-identity/)**
+
 Give every project its own dev-server favicon — a rounded tile with the first character of the
 project name — so you can tell browser tabs apart without reading titles.
 
@@ -79,7 +81,7 @@ filesystem, and the `<link>` points straight at it. Webpack 4 is not supported.
 | `bgColor` | `string` | derived from the name | Any CSS colour, e.g. `oklch(0.5 0.1 200)` |
 | `textColor` | `'light' \| 'dark'` | `'light'` | Text colour preset; controls the background lightness range |
 | `render` | `(data) => string` | built-in template | Return a full SVG string |
-| `debug` | `boolean` | `false` | Log the resolved name, colour and contrast ratio |
+| `debug` | `boolean` | `false` | Log the resolved name and colour |
 
 ### Custom template
 
@@ -100,9 +102,11 @@ built-in template uses the exported `escapeXml` for that.
 
 ## How the colour is derived
 
-`sha256(name)` gives two independent numbers: one picks the hue, the other interpolates the
+`sha256(name)` gives two independent numbers: word 0 picks the hue and word 4 interpolates the
 lightness inside a fixed range. The chroma is then pushed to the **sRGB gamut boundary** for that
-lightness and hue.
+lightness and hue. The other words are reserved, so future refinements can be added without moving
+the two values that decide an existing colour. In Node the library hashes the name for you; the
+`/web` entry takes the digest instead, so the same rules apply on any runtime.
 
 Three properties fall out of that, and they're all covered by tests:
 
@@ -121,34 +125,51 @@ Chroma is *not* a fixed small number, which is what usually makes generated pale
 out. Each hue goes to its own limit — cyan tops out around `C=0.09` while magenta reaches `0.29` —
 so every colour is as saturated as sRGB allows at that lightness.
 
-Run `faviconIdentity({ debug: true })` to print the resolved name, the generated colour and its
-contrast ratio to the terminal.
+Run `faviconIdentity({ debug: true })` to print the resolved name and generated colour to the
+terminal.
 
-## Core API
+## Programmatic API
 
-The colour maths is exported if you want it elsewhere — it's plain functions with no bundler
-dependency:
+### Node
 
 ```ts
-import { createIdentityColor, formatOklch, contrastWithText } from 'unplugin-favicon-identity'
+import { createFavicon, createIdentityColor } from 'unplugin-favicon-identity'
 
+const { svg, background } = createFavicon('Outpatient Portal')
 const color = createIdentityColor('Outpatient Portal', 'light') // { lightness, chroma, hue }
-formatOklch(color) // 'oklch(0.483 0.190 13)'
-contrastWithText(color, 'light') // 7.19
 ```
 
-Also exported: `maxChroma`, `isInSrgbGamut`, `oklchToSrgb`, `relativeLuminance`, `contrastRatio`,
-`escapeXml`, `extractTitle`, `firstChar`, `buildFaviconSvg` and the `TEXT_STYLES` presets.
+### Any runtime, including the browser
+
+`unplugin-favicon-identity/web` contains no Node APIs and stays synchronous. The caller only has to
+provide the SHA-256 digest, so the browser can use Web Crypto:
+
+```ts
+import { createFaviconFromHash } from 'unplugin-favicon-identity/web'
+
+const name = 'Outpatient Portal'
+const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(name))
+const { svg, background, version } = createFaviconFromHash({ text: name, hash })
+```
+
+`hash` may be an `ArrayBuffer` or a `Uint8Array`. Both entries share the same colour and SVG code,
+so a name produces the same icon either way.
+
+Also exported: `formatOklch`, `buildFaviconSvg` and `escapeXml`, plus the `OklchColor`, `TextColor`,
+`FaviconRenderData`, `Favicon` and `FaviconOptions` types (`FaviconFromHashOptions` is web-only).
+Everything else in `core` — gamut maths, HTML parsing, contrast checks — is internal and may change
+without notice. Contrast is verified by the test suite, not exposed as an API.
 
 ## Notes
 
 - In dev the icon is served from `/{base}__favicon-identity.svg` with `Cache-Control: no-store`, and
-  the `<link>` carries a content hash (`?v=…`) so a stale favicon can't survive a reload. Under
-  webpack the same URL is served by the dev server from its in-memory filesystem. A production
-  build writes `__favicon-identity.svg` to the output root in both cases.
+  the `<link>` carries a name-derived fingerprint (`?v=…`) so a stale favicon can't survive a
+  reload. Under webpack the same URL is served by the dev server from its in-memory filesystem. A
+  production build writes `__favicon-identity.svg` to the output root in both cases.
 - An existing `<link rel="icon">` is replaced, extras are dropped. If there is none, one is added
   before `</head>`.
-- `firstChar` splits by grapheme cluster, so emoji sequences (`👨‍👩‍👧`, `👍🏽`) aren't torn apart.
+- The first character is taken by grapheme cluster, so emoji sequences (`👨‍👩‍👧`, `👍🏽`) aren't
+  torn apart.
 
 ## Development
 
@@ -156,7 +177,8 @@ Also exported: `maxChroma`, `isInSrgbGamut`, `oklchToSrgb`, `relativeLuminance`,
 bun install
 bun test        # colour contract, name parsing, SVG escaping
 bun run build   # tsup → dist (esm + cjs + dts)
-bun run playground
+bun run playground        # local React playground
+bun run build:playground  # static site → playground/dist
 ```
 
 ## License

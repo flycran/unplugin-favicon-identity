@@ -1,20 +1,32 @@
+import { createHash } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { createUnplugin } from 'unplugin'
-import type { FaviconRenderData, TextColor } from './core'
-import {
-  buildFaviconSvg,
-  contrastWithText,
-  createIdentityColor,
-  escapeXml,
-  extractTitle,
-  firstChar,
-  formatOklch,
-  hashString,
-  TEXT_STYLES,
-} from './core'
+import { createIdentityFromHash, type OklchColor, type TextColor } from './core/color'
+import { extractTitle } from './core/name'
+import { escapeXml } from './core/svg'
+import { createFaviconFromHash, type Favicon, type FaviconOptions } from './web'
 
-export * from './core'
+export type { OklchColor, TextColor } from './core/color'
+export { formatOklch } from './core/color'
+export type { FaviconRenderData } from './core/svg'
+export { buildFaviconSvg, escapeXml } from './core/svg'
+export type { Favicon, FaviconOptions } from './web'
+
+/** Node 入口负责这一步；颜色与 SVG 逻辑都在 /web 入口里，与运行时无关 */
+function sha256(input: string): Buffer {
+  return createHash('sha256').update(input).digest()
+}
+
+/** 由项目名生成完整图标（Node 版；浏览器请用 `unplugin-favicon-identity/web`） */
+export function createFavicon(name: string, options?: FaviconOptions): Favicon {
+  return createFaviconFromHash({ text: name, hash: sha256(name), ...options })
+}
+
+/** 只取身份色；浏览器请用 `createFaviconFromHash(...).color` */
+export function createIdentityColor(name: string, textColor: TextColor = 'light'): OklchColor {
+  return createIdentityFromHash(sha256(name), textColor).color
+}
 
 const PLUGIN_NAME = 'unplugin-favicon-identity'
 
@@ -81,27 +93,15 @@ function assetHref(htmlName: string, publicPath: string | undefined, file: strin
   return `${prefix}${normalized && !normalized.endsWith('/') ? `${normalized}/` : normalized}${file}`
 }
 
-export interface FaviconIdentityOptions {
+export interface FaviconIdentityOptions extends FaviconOptions {
   /** 图标文字，取其首个字符；缺省时读取 index.html 的 <title>，再缺省用 package.json 的 name（都取不到则报错） */
   text?: string
-  /** 背景色（任意 CSS 颜色，如 oklch(0.5 0.1 200) / #rrggbb）；缺省时由名字哈希生成 */
-  bgColor?: string
-  /** 文字色预设，只提供浅色与深色两种，缺省 light */
-  textColor?: TextColor
-  /** 自定义模板：接收渲染数据，返回完整的 SVG 字符串；缺省用内置模板 */
-  render?: (data: FaviconRenderData) => string
-  /** 在控制台打印名字、背景色与对比度 */
+  /** 在控制台打印名字与背景色 */
   debug?: boolean
 }
 
 export const unplugin = createUnplugin<FaviconIdentityOptions | undefined>((options) => {
-  const {
-    text,
-    bgColor,
-    textColor = 'light',
-    render = buildFaviconSvg,
-    debug = false,
-  } = options ?? {}
+  const { text, bgColor, textColor, render, debug = false } = options ?? {}
 
   let root = process.cwd()
   let base = '/'
@@ -155,20 +155,12 @@ export const unplugin = createUnplugin<FaviconIdentityOptions | undefined>((opti
     const name = await resolveName(html)
     if (icon?.name === name) return icon
 
-    const identity = createIdentityColor(name, textColor)
-    const background = bgColor ?? formatOklch(identity)
-    const svg = render({
-      char: firstChar(name),
-      background,
-      foreground: TEXT_STYLES[textColor].color,
-    })
-    icon = { name, svg, version: hashString(svg) }
+    const { svg, version, background } = createFavicon(name, { textColor, bgColor, render })
+    icon = { name, svg, version }
 
     if (debug) {
-      const detail = bgColor
-        ? '自定义背景色'
-        : `对比度 ${contrastWithText(identity, textColor).toFixed(2)}:1`
-      console.log(`  🎨 [favicon-identity] ${name} → ${background}（${detail}）`)
+      const detail = bgColor ? '（自定义背景色）' : ''
+      console.log(`  🎨 [favicon-identity] ${name} → ${background}${detail}`)
     }
     return icon
   }

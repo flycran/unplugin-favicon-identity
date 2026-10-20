@@ -7,6 +7,8 @@
 [![单元测试](https://img.shields.io/github/actions/workflow/status/flycran/unplugin-favicon-identity/ci.yml?label=tests)](https://github.com/flycran/unplugin-favicon-identity/actions/workflows/ci.yml)
 [![许可证](https://img.shields.io/github/license/flycran/unplugin-favicon-identity)](https://github.com/flycran/unplugin-favicon-identity/blob/main/LICENSE)
 
+**[打开在线预览站 →](https://flycran.github.io/unplugin-favicon-identity/)**
+
 给每个项目一枚属于自己的开发环境 favicon —— 一块圆角色块，写着项目名的首字 —— 这样不看标题也能
 分清浏览器标签页。
 
@@ -76,7 +78,7 @@ dev server 不需要额外配置：`webpack-dev-server` 会直接从内存文件
 | `bgColor` | `string` | 由名字派生 | 任意 CSS 颜色，如 `oklch(0.5 0.1 200)` |
 | `textColor` | `'light' \| 'dark'` | `'light'` | 文字色预设，同时决定背景的亮度区间 |
 | `render` | `(data) => string` | 内置模板 | 返回完整的 SVG 字符串 |
-| `debug` | `boolean` | `false` | 在终端打印名字、颜色与对比度 |
+| `debug` | `boolean` | `false` | 在终端打印名字与颜色 |
 
 ### 自定义模板
 
@@ -96,8 +98,10 @@ faviconIdentity({
 
 ## 颜色是怎么来的
 
-`sha256(名字)` 给出两个互相独立的小数：一个定色相，一个在固定区间里插值出亮度。彩度则被推到该
-亮度、该色相下 **sRGB 色域的边界**。
+`sha256(名字)` 给出两个互相独立的小数：第 0 个 32 位字定色相，第 4 个 32 位字在固定区间里插值出
+亮度。彩度则被推到该亮度、该色相下 **sRGB 色域的边界**。其余的字是预留位，以后加参数不会挪动
+这两个已经决定颜色的值。Node 端由库负责对名字做 SHA-256；`/web` 入口则直接接收摘要，所以任意
+运行时都适用同一套规则。
 
 由此得到三条性质，都有测试兜底：
 
@@ -115,31 +119,48 @@ faviconIdentity({
 打开 `faviconIdentity({ debug: true })` 就能看到你的项目拿到了什么：
 
 ```
-  🎨 [favicon-identity] 门诊随访系统 → oklch(0.483 0.190 13)（对比度 7.19:1）
+  🎨 [favicon-identity] 门诊随访系统 → oklch(0.511 0.254 311)
 ```
 
-## 核心 API
+## 程序化 API
 
-颜色计算是导出的，可以拿到别处用 —— 都是纯函数，不依赖任何构建工具：
+### Node
 
 ```ts
-import { createIdentityColor, formatOklch, contrastWithText } from 'unplugin-favicon-identity'
+import { createFavicon, createIdentityColor } from 'unplugin-favicon-identity'
 
+const { svg, background } = createFavicon('门诊随访系统')
 const color = createIdentityColor('门诊随访系统', 'light') // { lightness, chroma, hue }
-formatOklch(color) // 'oklch(0.483 0.190 13)'
-contrastWithText(color, 'light') // 7.19
 ```
 
-另外还导出：`maxChroma`、`isInSrgbGamut`、`oklchToSrgb`、`relativeLuminance`、`contrastRatio`、
-`escapeXml`、`extractTitle`、`firstChar`、`buildFaviconSvg` 以及 `TEXT_STYLES` 预设。
+### 任意运行时（包括浏览器）
+
+`unplugin-favicon-identity/web` 不含任何 Node API，且保持同步。调用方只需要提供 SHA-256 摘要，
+浏览器里直接用 Web Crypto：
+
+```ts
+import { createFaviconFromHash } from 'unplugin-favicon-identity/web'
+
+const name = '门诊随访系统'
+const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(name))
+const { svg, background, version } = createFaviconFromHash({ text: name, hash })
+```
+
+`hash` 可以是 `ArrayBuffer` 或 `Uint8Array`。两个入口共用同一套颜色与 SVG 代码，同一个名字在任一端
+生成的图标完全一致。
+
+另外还导出：`formatOklch`、`buildFaviconSvg`、`escapeXml`，以及 `OklchColor`、`TextColor`、
+`FaviconRenderData`、`Favicon`、`FaviconOptions` 类型（`FaviconFromHashOptions` 仅 web 入口）。
+`core` 里其余的东西——色域计算、HTML 解析、对比度校验——都是内部实现，可能随版本调整，
+不承诺兼容。对比度由测试套件校验，不作为 API 暴露。
 
 ## 注意事项
 
 - dev 下图标由 `/{base}__favicon-identity.svg` 提供，带 `Cache-Control: no-store`；`<link>` 上
-  还挂了内容哈希（`?v=…`），避免浏览器缓存的旧图标赖着不走。webpack 下同一地址由 dev server
-  从内存文件系统直接提供。两种构建器的生产产物都会在根目录写出 `__favicon-identity.svg`。
+  还挂了由名字派生的指纹（`?v=…`），避免浏览器缓存的旧图标赖着不走。webpack 下同一地址由 dev
+  server 从内存文件系统直接提供。两种构建器的生产产物都会在根目录写出 `__favicon-identity.svg`。
 - 已有的 `<link rel="icon">` 会被替换掉，多余的会被删除；一个都没有就在 `</head>` 前插一个。
-- `firstChar` 按字素簇切分，emoji 的组合序列（`👨‍👩‍👧`、`👍🏽`）不会被拆散。
+- 首个字符按字素簇切分，emoji 的组合序列（`👨‍👩‍👧`、`👍🏽`）不会被拆散。
 
 ## 开发
 
@@ -147,7 +168,8 @@ contrastWithText(color, 'light') // 7.19
 bun install
 bun test        # 颜色契约、名字解析、SVG 转义
 bun run build   # tsup → dist（esm + cjs + dts）
-bun run playground
+bun run playground        # 本地 React 预览站
+bun run build:playground  # 静态站点 → playground/dist
 ```
 
 ## 许可证

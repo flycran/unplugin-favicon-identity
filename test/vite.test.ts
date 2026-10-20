@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { createServer, type ViteDevServer, build as viteBuild } from 'vite'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FaviconIdentityOptions } from '../src'
-import { TEXT_STYLES } from '../src/core'
+import { TEXT_STYLES } from '../src/core/color'
 import faviconIdentity from '../src/vite'
 
 const ICON_LINK_RE = /<link\b[^>]*rel="icon"[^>]*>/gi

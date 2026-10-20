@@ -7,7 +7,7 @@ import type { Configuration, Stats } from 'webpack'
 import webpack from 'webpack'
 import WebpackDevServer from 'webpack-dev-server'
 import type { FaviconIdentityOptions } from '../src'
-import { TEXT_STYLES } from '../src/core'
+import { TEXT_STYLES } from '../src/core/color'
 import faviconIdentity from '../src/webpack'
 
 const ICON_LINK_RE = /<link\b[^>]*rel="icon"[^>]*>/gi
